@@ -11,8 +11,8 @@ export function Highlight({ children, className = '' }: HighlightProps) {
       </span>
       
       {/* First marker stroke - covers bottom-left to top-right */}
-      <div 
-        className="absolute z-0"
+      <span 
+        className="absolute z-0 block"
         style={{
           backgroundColor: '#C1F11D',
           top: '0.45em',
@@ -22,11 +22,11 @@ export function Highlight({ children, className = '' }: HighlightProps) {
           transform: 'skew(-2deg, 0.5deg) rotate(-0.3deg)',
           clipPath: 'ellipse(100% 45% at 50% 25%)'
         }}
-      ></div>
+      ></span>
       
       {/* Second marker stroke - covers top-left to bottom-right */}
-      <div 
-        className="absolute z-0"
+      <span 
+        className="absolute z-0 block"
         style={{
           backgroundColor: '#C1F11D',
           top: '0.2em',
@@ -36,7 +36,7 @@ export function Highlight({ children, className = '' }: HighlightProps) {
           transform: 'skew(1deg, -0.5deg) rotate(0.3deg)',
           clipPath: 'polygon(0% 0%, 25% 10%, 75% 10%, 100% 0%, 100% 100%, 0% 100%)'
         }}
-      ></div>
+      ></span>
     </span>
   );
 }

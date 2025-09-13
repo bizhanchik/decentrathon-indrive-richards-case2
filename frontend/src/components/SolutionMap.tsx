@@ -1,69 +1,92 @@
 import { useState } from 'react';
 import { Highlight } from './Highlight';
+import { TaxiAnalysisMap } from './map/TaxiAnalysisMap';
+import { MapProvider, useMap, useLayerMetadata } from '../contexts/MapContext';
 
 interface DataLayer {
   id: string;
   name: string;
   description: string;
   icon: string;
-  active: boolean;
   color: string;
 }
 
-export function SolutionMap() {
-  const [activeLayers, setActiveLayers] = useState<string[]>(['popular-routes']);
+function SolutionMapContent() {
   const [isMobileLayersOpen, setIsMobileLayersOpen] = useState(false);
+  const { 
+    activeLayers, 
+    toggleLayer, 
+    enableAllLayers, 
+    clearAllLayers, 
+    isLoading, 
+    error,
+    analysisData 
+  } = useMap();
   
+  const layerMetadata = useLayerMetadata();
+  
+  // Updated data layers with correct IDs matching the analysis data
   const dataLayers: DataLayer[] = [
     {
-      id: 'popular-routes',
+      id: 'routes',
       name: 'Popular Routes',
-      description: 'Most frequently used transportation paths',
+      description: layerMetadata.routes?.description || 'Most frequently used transportation paths',
       icon: '🛣️',
-      active: true,
       color: '#C1F21D'
     },
     {
-      id: 'demand-heatmaps',
-      name: 'Demand Heatmaps',
-      description: 'High-demand areas for transportation services',
+      id: 'demand',
+      name: 'Demand Visualization',
+      description: layerMetadata.demand?.description || 'High-demand areas for transportation services',
       icon: '🔥',
-      active: false,
       color: '#FF6B6B'
     },
     {
-      id: 'driver-distribution',
+      id: 'availability',
       name: 'Driver Distribution',
-      description: 'Current driver availability across regions',
+      description: layerMetadata.availability?.description || 'Current driver availability across regions',
       icon: '🚗',
-      active: false,
       color: '#4ECDC4'
     },
     {
-      id: 'speed-violations',
+      id: 'violations',
       name: 'Speed Violations',
-      description: 'Routes with excessive speed incidents',
+      description: layerMetadata.violations?.description || 'Routes with excessive speed incidents',
       icon: '⚡',
-      active: false,
       color: '#FF4757'
     },
     {
-      id: 'unusual-trips',
+      id: 'anomalies',
       name: 'Unusual Trips',
-      description: 'Anomaly detection in travel patterns',
+      description: layerMetadata.anomalies?.description || 'Anomaly detection in travel patterns',
       icon: '⚠️',
-      active: false,
       color: '#FFE66D'
+    },
+    {
+      id: 'traffic_jams',
+      name: 'Traffic Jams',
+      description: layerMetadata.traffic_jams?.description || 'Congestion areas identification',
+      icon: '🚦',
+      color: '#E74C3C'
+    },
+    {
+      id: 'speed_zones',
+      name: 'Speed Zones',
+      description: layerMetadata.speed_zones?.description || 'Speed pattern visualization',
+      icon: '📈',
+      color: '#9B59B6'
     }
   ];
 
-  const toggleLayer = (layerId: string) => {
-    setActiveLayers(prev => 
-      prev.includes(layerId) 
-        ? prev.filter(id => id !== layerId)
-        : [...prev, layerId]
+  // Filter layers based on available data
+  const availableLayers = dataLayers.filter(layer => {
+    const layerData = analysisData?.layers[layer.id as keyof typeof analysisData.layers];
+    return layerData && (
+      (Array.isArray(layerData) && layerData.length > 0) ||
+      (layerData.points && layerData.points.length > 0) ||
+      (layerData.hexagons && layerData.hexagons.length > 0)
     );
-  };
+  });
 
   return (
     <div className="h-full bg-white overflow-hidden">
@@ -78,10 +101,10 @@ export function SolutionMap() {
               </h2>
               
               <div className="space-y-4">
-                {dataLayers.map((layer, index) => (
+                {availableLayers.map((layer, index) => (
                   <div
                     key={layer.id}
-                    className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] transform animate-in slide-in-from-left delay-${(index + 1) * 100} ${
+                    className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] transform animate-in slide-in-from-left ${
                       activeLayers.includes(layer.id) 
                         ? 'border-opacity-100 shadow-lg' 
                         : 'border-gray-200 hover:border-gray-300'
@@ -148,14 +171,14 @@ export function SolutionMap() {
           <div className="border-t border-gray-200 p-4 bg-white animate-in slide-in-from-bottom duration-800 delay-1000 flex-shrink-0" style={{ minHeight: '140px' }}>
             <div className="space-y-3">
               <button
-                onClick={() => setActiveLayers(dataLayers.map(l => l.id))}
+                onClick={enableAllLayers}
                 className="w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform"
                 style={{ backgroundColor: '#C1F21D', color: '#141414' }}
               >
                 Enable All Layers
               </button>
               <button
-                onClick={() => setActiveLayers([])}
+                onClick={clearAllLayers}
                 className="w-full px-4 py-3 rounded-lg text-sm font-medium border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform hover:bg-gray-50"
                 style={{ borderColor: '#141414', color: '#141414' }}
               >
@@ -167,42 +190,72 @@ export function SolutionMap() {
 
         {/* Map Area */}
         <div className="flex-1 relative animate-in slide-in-from-right duration-800 delay-500">
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-            {/* Map Placeholder */}
-            <div className="text-center max-w-md mx-auto p-8 animate-in fade-in duration-1000 delay-800">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-4xl transition-all duration-300 hover:scale-110 hover:rotate-12 transform" style={{ backgroundColor: '#FFFEEB' }}>
-                🗺️
-              </div>
-              <h3 className="text-2xl font-bold mb-4 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
-                Interactive Map Coming Soon
-              </h3>
-              <p className="text-lg opacity-80 mb-6 transition-opacity duration-300 hover:opacity-100" style={{ color: '#141414' }}>
-                Our <Highlight>privacy-first</Highlight> geotrack visualization will display here once backend integration is complete.
-              </p>
-              <div className="space-y-3 text-sm opacity-60" style={{ color: '#141414' }}>
-                <div className="flex items-center justify-center space-x-2 transition-all duration-300 hover:opacity-100 hover:scale-105 transform">
-                  <span>🔐</span>
-                  <span>Fully anonymized data processing</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2 transition-all duration-300 hover:opacity-100 hover:scale-105 transform">
-                  <span>⚡</span>
-                  <span>Real-time analytics engine</span>
-                </div>
-                <div className="flex items-center justify-center space-x-2 transition-all duration-300 hover:opacity-100 hover:scale-105 transform">
-                  <span>🎯</span>
-                  <span>Advanced pattern recognition</span>
-                </div>
+          <>
+            {/* Loading State */}
+            {isLoading && (
+            <div className="absolute inset-0 bg-gray-50 flex items-center justify-center z-10">
+              <div className="text-center">
+                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold mb-2" style={{ color: '#141414' }}>Loading Analysis Data</h3>
+                <p className="text-sm opacity-70" style={{ color: '#141414' }}>Preparing taxi visualization layers...</p>
               </div>
             </div>
+          )}
 
-            {/* Active Layers Overlay */}
-            {activeLayers.length > 0 && (
-              <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-top duration-500 delay-1000 hidden lg:block">
+          {/* Error State */}
+          {error && !isLoading && (
+            <div className="absolute inset-0 bg-red-50 flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto p-8">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-red-800">Data Loading Failed</h3>
+                <p className="text-sm text-red-600 mb-4">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Reload Page
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Success State - Real Map */}
+          {!isLoading && !error && analysisData && (
+            <TaxiAnalysisMap 
+              className="h-full w-full" 
+              activeLayers={activeLayers}
+            />
+          )}
+
+          {/* Fallback State */}
+          {!isLoading && !error && !analysisData && (
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto p-8 animate-in fade-in duration-1000 delay-800">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-4xl transition-all duration-300 hover:scale-110 hover:rotate-12 transform" style={{ backgroundColor: '#FFFEEB' }}>
+                  🗺️
+                </div>
+                <h3 className="text-2xl font-bold mb-4 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
+                  No Analysis Data Available
+                </h3>
+                <p className="text-lg opacity-80 mb-6 transition-opacity duration-300 hover:opacity-100" style={{ color: '#141414' }}>
+                  Our <Highlight>privacy-first</Highlight> taxi analysis system is ready to visualize data.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Active Layers Overlay */}
+          {activeLayers.length > 0 && analysisData && (
+            <div className="active-layers-overlay absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-top duration-500 delay-1000 hidden lg:block" style={{ zIndex: 1000 }}>
                 <h4 className="font-semibold mb-2 transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
                   Active Data Layers
                 </h4>
                 <div className="space-y-2">
-                  {dataLayers
+                  {availableLayers
                     .filter(layer => activeLayers.includes(layer.id))
                     .map((layer, index) => (
                       <div key={layer.id} className="flex items-center space-x-2 text-sm transition-all duration-300 hover:scale-105 transform" style={{ animationDelay: `${1200 + (index * 100)}ms` }}>
@@ -214,17 +267,82 @@ export function SolutionMap() {
                       </div>
                     ))}
                 </div>
-              </div>
-            )}
+            </div>
+          )}
 
-            {/* Mobile Bottom Panel */}
-            <div className="lg:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-              {/* Mobile Data Layers Toggle Button */}
-              <div className="p-4 border-b border-gray-200">
-                <button
-                  onClick={() => setIsMobileLayersOpen(!isMobileLayersOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
-                >
+          {/* Current Layer Legend - Bottom Right */}
+          {activeLayers.length > 0 && analysisData && (
+            <div className="layer-legend absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm hidden lg:block" style={{ zIndex: 1000 }}>
+              <h4 className="font-semibold mb-2 transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
+                Current Layer Description
+              </h4>
+              <div className="space-y-2">
+                {availableLayers
+                  .filter(layer => activeLayers.includes(layer.id))
+                  .map((layer, index) => {
+                    // Get layer-specific descriptions
+                    const getLayerDescription = (layerId: string) => {
+                      switch (layerId) {
+                        case 'routes':
+                          return 'Most frequently used transportation paths (heatmap)';
+                        case 'demand':
+                          return 'High-demand areas for transportation services';
+                        case 'availability':
+                          return 'Current driver availability across regions';
+                        case 'violations':
+                          return 'Speed limit violations (>60 km/h)';
+                        case 'anomalies':
+                          return 'Unusual trip patterns and anomalies';
+                        case 'traffic_jams':
+                          return 'Traffic congestion areas';
+                        case 'speed_zones':
+                          return 'Speed pattern visualization (heatmap)';
+                        default:
+                          return layer.description;
+                      }
+                    };
+
+                    return (
+                      <div key={layer.id} className="layer-legend-item flex items-start space-x-3 transition-all duration-300 hover:scale-105 transform">
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <div 
+                            className="w-4 h-4 rounded-sm flex-shrink-0" 
+                            style={{ backgroundColor: layer.color }}
+                          ></div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
+                            {layer.name}
+                          </div>
+                          <div className="text-xs mt-1 transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.8 }}>
+                            {getLayerDescription(layer.id)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+              
+              {/* Data info */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="text-xs transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.6 }}>
+                  Total Records: {analysisData.metadata.total_records.toLocaleString()}
+                </div>
+                <div className="text-xs transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.6 }}>
+                  Active Layers: {activeLayers.length} of {availableLayers.length}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Bottom Panel */}
+          <div className="lg:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+            {/* Mobile Data Layers Toggle Button */}
+            <div className="p-4 border-b border-gray-200">
+              <button
+                onClick={() => setIsMobileLayersOpen(!isMobileLayersOpen)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
+              >
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">📊</span>
                     <span className="font-medium" style={{ color: '#141414' }}>
@@ -250,14 +368,14 @@ export function SolutionMap() {
                     {/* Quick Controls */}
                     <div className="flex space-x-2 mb-4">
                       <button
-                        onClick={() => setActiveLayers(dataLayers.map(l => l.id))}
+                        onClick={enableAllLayers}
                         className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-[1.02]"
                         style={{ backgroundColor: '#C1F21D', color: '#141414' }}
                       >
                         Enable All
                       </button>
                       <button
-                        onClick={() => setActiveLayers([])}
+                        onClick={clearAllLayers}
                         className="flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-all duration-300 hover:scale-[1.02] hover:bg-gray-50"
                         style={{ borderColor: '#141414', color: '#141414' }}
                       >
@@ -266,7 +384,7 @@ export function SolutionMap() {
                     </div>
 
                     {/* Compact Layer List */}
-                    {dataLayers.map((layer) => (
+                    {availableLayers.map((layer) => (
                       <button
                         key={layer.id}
                         onClick={() => toggleLayer(layer.id)}
@@ -315,9 +433,17 @@ export function SolutionMap() {
                 </div>
               )}
             </div>
-          </div>
+          </>
         </div>
       </div>
     </div>
+  );
+}
+
+export function SolutionMap() {
+  return (
+    <MapProvider>
+      <SolutionMapContent />
+    </MapProvider>
   );
 }
