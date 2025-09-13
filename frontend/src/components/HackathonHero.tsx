@@ -12,10 +12,12 @@ export function HackathonHero() {
               href="https://decentrathon.ai/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="inline-block px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg transform cursor-pointer group" 
+              className="inline-block px-3 py-2 sm:px-4 sm:py-2 md:px-6 md:py-3 rounded-full text-sm sm:text-base md:text-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg transform cursor-pointer group" 
               style={{ backgroundColor: '#C1F21D', color: '#141414' }}
             >
-              <span className="transition-transform duration-300 group-hover:scale-110 inline-block">🏆</span> Decentrathon 2025 Winners - Team Richards
+              <span className="transition-transform duration-300 group-hover:scale-110 inline-block">🏆</span> 
+              <span className="hidden sm:inline">Decentrathon 2025 Winners - Team Richards</span>
+              <span className="sm:hidden">Decentrathon Winners</span>
             </a>
           </div>
 
