@@ -5,3 +5,4 @@ export { HackathonHero } from './HackathonHero';
 export { SolutionOverview } from './SolutionOverview';
 export { TeamSection } from './TeamSection';
 export { HackathonFooter } from './HackathonFooter';
+export { SolutionMap } from './SolutionMap';

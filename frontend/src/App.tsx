@@ -1,3 +1,4 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { 
   HackathonHeader, 
   HackathonHero, 
@@ -5,8 +6,9 @@ import {
   TeamSection, 
   HackathonFooter 
 } from './components';
+import { SolutionPage } from './pages/SolutionPage';
 
-function App() {
+function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       <HackathonHeader />
@@ -15,10 +17,20 @@ function App() {
         <HackathonHero />
         <SolutionOverview />
         <TeamSection />
+        <HackathonFooter />
       </main>
-      
-      <HackathonFooter />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/solution" element={<SolutionPage />} />
+      </Routes>
+    </Router>
   );
 }
 

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Highlight } from './Highlight';
 
 export function TeamSection() {
@@ -53,14 +54,15 @@ export function TeamSection() {
             <p className="text-lg mb-6 transition-opacity duration-300 group-hover:opacity-100" style={{ color: '#141414', opacity: 0.8 }}>
               Discover how we're revolutionizing geotrack analytics while protecting privacy
             </p>
-            <button 
-              className="px-8 py-4 rounded-lg text-lg font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg transform group-button"
+            <Link 
+              to="/solution"
+              className="px-8 py-4 rounded-lg text-lg font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-lg transform group-button inline-block"
               style={{ backgroundColor: '#141414' }}
             >
               <span className="transition-transform duration-300 group-button-hover:translate-x-1 inline-block">
                 View Demo →
               </span>
-            </button>
+            </Link>
           </div>
         </div>
       </div>

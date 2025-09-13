@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Highlight } from './Highlight';
 
 export function HackathonHero() {
@@ -14,7 +15,7 @@ export function HackathonHero() {
               className="inline-block px-6 py-3 rounded-full text-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg transform cursor-pointer group" 
               style={{ backgroundColor: '#C1F21D', color: '#141414' }}
             >
-              <span className="transition-transform duration-300 group-hover:scale-110 inline-block">🏆</span> Decentrathon 2025 - Team Richards
+              <span className="transition-transform duration-300 group-hover:scale-110 inline-block">🏆</span> Decentrathon 2025 Winners - Team Richards
             </a>
           </div>
 
@@ -36,14 +37,15 @@ export function HackathonHero() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-6 justify-center my-12 animate-in slide-in-from-bottom duration-800 delay-700">
-            <button 
-              className="px-8 py-4 rounded-lg text-xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl transform hover:brightness-95 shadow-lg group"
+            <Link 
+              to="/solution"
+              className="px-8 py-4 rounded-lg text-xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl transform hover:brightness-95 shadow-lg group inline-block text-center"
               style={{ backgroundColor: '#C1F21D', color: '#141414' }}
             >
               <span className="transition-transform duration-300 group-hover:translate-x-1 inline-block">
                 View Our Solution →
               </span>
-            </button>
+            </Link>
             <button 
               className="px-8 py-4 rounded-lg text-xl font-semibold border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:bg-gray-50 transform group"
               style={{ borderColor: '#141414', color: '#141414' }}

@@ -42,7 +42,7 @@ export function HackathonFooter() {
 
         <div className="mt-8 pt-8 border-t text-center transition-all duration-300 hover:border-opacity-80 animate-in slide-in-from-bottom duration-800 delay-800" style={{ borderColor: '#C1F21D' }}>
           <p className="text-white opacity-60 transition-opacity duration-300 hover:opacity-90">
-            © 2025 Team Richards • Decentrathon • Built with privacy in mind
+            🏆 Decentrathon 2025 Winners - Team Richards • Built with privacy in mind
           </p>
         </div>
       </div>
