@@ -1,9 +1,4 @@
-export { Header } from './Header';
-export { Hero } from './Hero';
-export { Services } from './Services';
-export { Impact } from './Impact';
-export { Safety } from './Safety';
-export { Footer } from './Footer';
+// Team Richards Hackathon Components
 export { Highlight } from './Highlight';
 export { HackathonHeader } from './HackathonHeader';
 export { HackathonHero } from './HackathonHero';
