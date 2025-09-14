@@ -35,6 +35,7 @@ export class DataService {
         throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
       }
 
+      
       const data = await response.json();
       const validatedData = this.validateData(data);
       
