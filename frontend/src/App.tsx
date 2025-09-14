@@ -1,11 +1,17 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { 
-  HackathonHeader, 
-  HackathonHero, 
-  SolutionOverview, 
-  TeamSection, 
-  HackathonFooter 
-} from './components';
+// import { 
+//   HackathonHeader, 
+//   HackathonHero, 
+//   SolutionOverview, 
+//   TeamSection, 
+//   HackathonFooter 
+// } from './components';
+
+import { HackathonHeader } from './components/HackathonHeader';
+import { HackathonHero } from './components/HackathonHero';
+import { HackathonFooter } from './components/HackathonFooter';
+import { SolutionOverview } from './components/SolutionOverview';
+import { TeamSection } from './components/TeamSection';
 import { SolutionPage } from './pages/SolutionPage';
 
 function LandingPage() {
