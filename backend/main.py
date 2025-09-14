@@ -42,7 +42,8 @@ ORS_API_KEYS = [
     "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImVkNDRmNWVkYmM2MDRkMmQ5Y2FmZTEwODVlNzQ2NmQzIiwiaCI6Im11cm11cjY0In0=",
     "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyZGM5NTY5MGE3NDRlNWI4NjcyMWViYTMwMTk2MDcxIiwiaCI6Im11cm11cjY0In0=",
     "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImYwYjNmNTU5MjhlODRhN2FhNGJhZTc0ZWE3ZTI3N2E0IiwiaCI6Im11cm11cjY0In0=",
-    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBkYmI4NGU5YWUxMDQyY2Q4NTM3MDA4YjY3MWY4MGRlIiwiaCI6Im11cm11cjY0In0="
+    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBkYmI4NGU5YWUxMDQyY2Q4NTM3MDA4YjY3MWY4MGRlIiwiaCI6Im11cm11cjY0In0=",
+    "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImI0NzM5YjUxNmJmZDRlNTc5OTAwYTgzNGJmNzE0MGNlIiwiaCI6Im11cm11cjY0In0="
 ]
 
 CENTER_LAT = 51.111339
@@ -195,7 +196,7 @@ class TaxiDispatchSystem:
         max_retries = 4
         base_delay = 2
 
-        used_api_key = ORS_API_KEYS[0]
+        used_api_key = random.choice(ORS_API_KEYS)
         
         if USE_ROUTES_PLANNER:
             for attempt in range(max_retries):
@@ -222,7 +223,7 @@ class TaxiDispatchSystem:
                     # Rate limiting or temporary error
                     if response.status_code == 429:
                         if attempt >= 3:
-                            used_api_key = ORS_API_KEYS[attempt % len(ORS_API_KEYS)]
+                            used_api_key = random.choice(ORS_API_KEYS)
                             logger.warning(f"Using different API key: {used_api_key}")
 
                         delay = base_delay * (2 ** attempt)

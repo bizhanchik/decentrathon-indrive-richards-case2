@@ -81,7 +81,7 @@ interface SimulationData {
 }
 
 const Legend = React.memo(() => {
-  const map = useMap();
+  // const map = useMap(); // Removed unused variable
   
   // useEffect(() => {
   //   const legend = L.control({ position: 'bottomright' });
@@ -183,7 +183,7 @@ const TaxiAnimation = React.memo<{ assignment: Assignment; onComplete: (orderId:
     setHasStarted(true);
     let taxiMarker: L.Marker | null = null;
     let currentPolyline: L.Polyline | null = null;
-    let animationId: NodeJS.Timeout | null = null;
+    let animationId: number | null = null;
     let isDestroyed = false;
     
     const cleanup = () => {
@@ -201,7 +201,7 @@ const TaxiAnimation = React.memo<{ assignment: Assignment; onComplete: (orderId:
       
       const points = route.path;
       // Get dash pattern based on algorithm (only pickup route varies)
-      const getDashPattern = (algorithmUsed: string, routeType: string) => {
+      const getDashPattern = (_algorithmUsed: string, routeType: string) => {
         if (routeType === 'dropoff') {
           return undefined; // Solid line for all dropoff routes
         }

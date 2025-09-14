@@ -63,7 +63,7 @@ export const createTourSteps = (): Step[] => {
       placement: 'top',
       floaterProps: {
         disableAnimation: true,
-      },
+      } as any,
       styles: {
         options: {
           zIndex: 10000,
