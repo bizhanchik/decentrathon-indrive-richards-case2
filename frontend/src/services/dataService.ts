@@ -29,7 +29,7 @@ export class DataService {
     }
 
     try {
-      const response = await fetch('public/taxi_analysis_data.json');
+      const response = await fetch('/taxi_analysis_data.json');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
