@@ -1,4 +1,5 @@
-import { HackathonHeader } from '../components';
+// import { HackathonHeader } from '../components';
+import { HackathonHeader } from '../components/HackathonHeader';
 import { SolutionMap } from '../components/SolutionMap';
 
 export function SolutionPage() {
