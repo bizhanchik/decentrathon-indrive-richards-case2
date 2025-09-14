@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Highlight } from './Highlight';
 import { TaxiAnalysisMap } from './map/TaxiAnalysisMap';
+import { TaxiSimulation } from './TaxiSimulation';
 import { MapProvider, useMap, useLayerMetadata } from '../contexts/MapContext';
 import { useTourContext } from '../contexts/TourContext';
 
@@ -15,6 +16,13 @@ interface DataLayer {
 function SolutionMapContent() {
   const [isMobileLayersOpen, setIsMobileLayersOpen] = useState(false);
   const [mobileTooltipOpen, setMobileTooltipOpen] = useState<string | null>(null);
+  const [isSimulationActive, setIsSimulationActive] = useState(false);
+  
+  // Simulation state
+  const [useProximity, setUseProximity] = useState(true);
+  const [useSupplyDemand, setUseSupplyDemand] = useState(true);
+  const [showDemandLayer, setShowDemandLayer] = useState(false);
+  const [demandHexagons, setDemandHexagons] = useState<any[]>([]);
   const { 
     activeLayers, 
     toggleLayer, 
@@ -30,11 +38,70 @@ function SolutionMapContent() {
 
   // Auto-open mobile layers panel when tour reaches the data layers step (step 3) and keep it open for layer steps
   useEffect(() => {
-    if (isTourOpen && currentStep >= 3 && currentStep <= 10) {
+    if (isTourOpen && currentStep >= 3 && currentStep <= 10 && !isSimulationActive) {
       // Steps 3-10 cover data layers explanation and all individual layer steps
       setIsMobileLayersOpen(true);
     }
-  }, [isTourOpen, currentStep]);
+  }, [isTourOpen, currentStep, isSimulationActive]);
+
+  // Simulation control handlers
+  const handleSimulationToggle = useCallback(() => {
+    setIsSimulationActive(!isSimulationActive);
+    if (!isSimulationActive) {
+      // When entering simulation, close mobile layers panel
+      setIsMobileLayersOpen(false);
+    }
+  }, [isSimulationActive]);
+
+  const handleProximityChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.checked;
+    setUseProximity(newValue);
+    // Send WebSocket message to update algorithm configuration
+    if ((window as any).wsRef?.readyState === WebSocket.OPEN) {
+      (window as any).wsRef.send(JSON.stringify({
+        type: 'algorithm_config',
+        proximity: newValue,
+        supply_demand: useSupplyDemand
+      }));
+    }
+  }, [useSupplyDemand]);
+
+  const handleSupplyDemandChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.checked;
+    setUseSupplyDemand(newValue);
+    // Send WebSocket message to update algorithm configuration
+    if ((window as any).wsRef?.readyState === WebSocket.OPEN) {
+      (window as any).wsRef.send(JSON.stringify({
+        type: 'algorithm_config',
+        proximity: useProximity,
+        supply_demand: newValue
+      }));
+    }
+  }, [useProximity]);
+
+  const getAlgorithmName = () => {
+    if (useProximity && useSupplyDemand) {
+      return '🔄 Distance + Demand';
+    } else if (useProximity) {
+      return '📍 Distance-Based';
+    } else if (useSupplyDemand) {
+      return '📊 Demand-Based';
+    } else {
+      return '❌ None Selected';
+    }
+  };
+
+  const getAlgorithmColor = () => {
+    if (useProximity && useSupplyDemand) {
+      return '#10b981'; // Green for hybrid
+    } else if (useProximity) {
+      return '#3b82f6'; // Blue for proximity
+    } else if (useSupplyDemand) {
+      return '#f59e0b'; // Orange for demand
+    } else {
+      return '#ef4444'; // Red for none
+    }
+  };
 
   // Helper function to get detailed info for each layer
   const getLayerInfo = (layerId: string): string => {
@@ -151,18 +218,90 @@ function SolutionMapContent() {
               {/* Taxi Simulation Button */}
               <button
                 id="tour-taxi-simulation-desktop"
-                className="w-full px-4 py-3 mb-6 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform"
-                style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+                onClick={handleSimulationToggle}
+                className={`w-full px-4 py-3 mb-6 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform ${
+                  isSimulationActive ? 'border-2 hover:bg-gray-50' : ''
+                }`}
+                style={{ 
+                  backgroundColor: isSimulationActive ? 'transparent' : '#C1F21D', 
+                  color: '#141414',
+                  borderColor: isSimulationActive ? '#141414' : undefined
+                }}
               >
-                🚕 Taxi Simulation
+                {isSimulationActive ? '🔙 Back to Analysis' : '🚕 Taxi Simulation'}
               </button>
               
-              <h2 id="tour-data-layers" className="tour-data-layers-target text-xl font-bold mb-6 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
-                Data Layers
-              </h2>
-              
-              <div id="tour-layers-list" className="space-y-4">
-                {availableLayers.map((layer, index) => (
+              {isSimulationActive ? (
+                <>
+                  {/* Assignment Algorithm Section */}
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold mb-4 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
+                      Assignment Algorithm
+                    </h2>
+                    <div className="space-y-4">
+                      <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={useProximity}
+                          onChange={handleProximityChange}
+                          className="rounded"
+                        />
+                        <div>
+                          <span className="font-medium" style={{ color: '#141414' }}>📍 Proximity</span>
+                          <p className="text-sm text-gray-600 mt-1">Assigns taxis based on shortest distance to pickup location</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={useSupplyDemand}
+                          onChange={handleSupplyDemandChange}
+                          className="rounded"
+                        />
+                        <div>
+                          <span className="font-medium" style={{ color: '#141414' }}>📊 Supply-Demand Ratio</span>
+                          <p className="text-sm text-gray-600 mt-1">Considers demand density and taxi availability in each hexagon area</p>
+                        </div>
+                      </label>
+                      <div
+                        className="px-4 py-3 rounded-lg text-sm font-medium text-center transition-all duration-300"
+                        style={{ backgroundColor: getAlgorithmColor(), color: 'white' }}
+                      >
+                        Active: {getAlgorithmName()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Demand Visualization Section */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold mb-4" style={{ color: '#141414' }}>
+                      Demand Visualization
+                    </h3>
+                    <button
+                      onClick={() => setShowDemandLayer(!showDemandLayer)}
+                      className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform ${
+                        showDemandLayer 
+                          ? 'border-2 hover:bg-gray-50' 
+                          : ''
+                      }`}
+                      style={{
+                        backgroundColor: showDemandLayer ? 'transparent' : '#C1F21D',
+                        color: '#141414',
+                        borderColor: showDemandLayer ? '#141414' : undefined
+                      }}
+                    >
+                      {showDemandLayer ? 'Hide' : 'Show'} Demand ({demandHexagons.length})
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 id="tour-data-layers" className="tour-data-layers-target text-xl font-bold mb-6 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
+                    Data Layers
+                  </h2>
+                  
+                  <div id="tour-layers-list" className="space-y-4">
+                    {availableLayers.map((layer, index) => (
                   <div
                     key={layer.id}
                     id={`tour-layer-${layer.id}`}
@@ -248,31 +387,36 @@ function SolutionMapContent() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Fixed Controls at Bottom - Guaranteed Space */}
-          <div id="tour-layer-controls" className="border-t border-gray-200 p-4 bg-white animate-in slide-in-from-bottom duration-800 delay-1000 flex-shrink-0" style={{ minHeight: '140px' }}>
-            <div className="space-y-3">
-              <button
-                onClick={enableAllLayers}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform"
-                style={{ backgroundColor: '#C1F21D', color: '#141414' }}
-              >
-                Enable All Layers
-              </button>
-              <button
-                onClick={clearAllLayers}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform hover:bg-gray-50"
-                style={{ borderColor: '#141414', color: '#141414' }}
-              >
-                Clear All Layers
-              </button>
+          {/* Fixed Controls at Bottom - Only show during analysis mode */}
+          {!isSimulationActive && (
+            <div id="tour-layer-controls" className="border-t border-gray-200 p-4 bg-white animate-in slide-in-from-bottom duration-800 delay-1000 flex-shrink-0" style={{ minHeight: '140px' }}>
+              <div className="space-y-3">
+                <button
+                  onClick={enableAllLayers}
+                  className="w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform"
+                  style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+                >
+                  Enable All Layers
+                </button>
+                <button
+                  onClick={clearAllLayers}
+                  className="w-full px-4 py-3 rounded-lg text-sm font-medium border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform hover:bg-gray-50"
+                  style={{ borderColor: '#141414', color: '#141414' }}
+                >
+                  Clear All Layers
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
+
 
         {/* Map Area */}
         <div id="tour-map-area" className="flex-1 relative animate-in slide-in-from-right duration-800 delay-500">
@@ -309,12 +453,26 @@ function SolutionMapContent() {
             </div>
           )}
 
-          {/* Success State - Real Map */}
-          {!isLoading && !error && analysisData && (
-            <TaxiAnalysisMap 
-              className="h-full w-full" 
-              activeLayers={activeLayers}
-            />
+          {/* Success State - Real Map or Simulation */}
+          {!isLoading && !error && (
+            <>
+              {isSimulationActive ? (
+                <TaxiSimulation 
+                  className="h-full w-full"
+                  showDemandLayer={showDemandLayer}
+                  onDemandUpdate={setDemandHexagons}
+                  useProximity={useProximity}
+                  useSupplyDemand={useSupplyDemand}
+                />
+              ) : (
+                analysisData && (
+                  <TaxiAnalysisMap 
+                    className="h-full w-full" 
+                    activeLayers={activeLayers}
+                  />
+                )
+              )}
+            </>
           )}
 
           {/* Fallback State */}
@@ -334,8 +492,8 @@ function SolutionMapContent() {
             </div>
           )}
 
-          {/* Active Layers Overlay */}
-          {activeLayers.length > 0 && analysisData && (
+          {/* Active Layers Overlay - Only show during analysis mode */}
+          {activeLayers.length > 0 && analysisData && !isSimulationActive && (
             <div className="active-layers-overlay absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-top duration-500 delay-1000 hidden lg:block z-10">
                 <h4 className="font-semibold mb-2 transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
                   Active Data Layers
@@ -356,70 +514,116 @@ function SolutionMapContent() {
             </div>
           )}
 
-          {/* Current Layer Legend - Bottom Right */}
-          {activeLayers.length > 0 && analysisData && (
+          {/* Current Layer Legend - Bottom Right - Shows simulation info during simulation */}
+          {((activeLayers.length > 0 && analysisData && !isSimulationActive) || isSimulationActive) && (
             <div className="layer-legend absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-sm hidden lg:block" style={{ zIndex: 1000 }}>
               <h4 className="font-semibold mb-2 transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
-                Current Layer Description
+                {isSimulationActive ? 'Simulation Legend' : 'Current Layer Description'}
               </h4>
-              <div className="space-y-2">
-                {availableLayers
-                  .filter(layer => activeLayers.includes(layer.id))
-                  .map((layer) => {
-                    // Get layer-specific descriptions
-                    const getLayerDescription = (layerId: string) => {
-                      switch (layerId) {
-                        case 'routes':
-                          return 'Most frequently used transportation paths (heatmap)';
-                        case 'demand':
-                          return 'High-demand areas for transportation services';
-                        case 'availability':
-                          return 'Current driver availability across regions';
-                        case 'violations':
-                          return 'Speed limit violations (>60 km/h)';
-                        case 'anomalies':
-                          return 'Unusual trip patterns and anomalies';
-                        case 'traffic_jams':
-                          return 'Traffic congestion areas';
-                        case 'speed_zones':
-                          return 'Speed pattern visualization (heatmap)';
-                        default:
-                          return layer.description;
-                      }
-                    };
-
-                    return (
-                      <div key={layer.id} className="layer-legend-item flex items-start space-x-3 transition-all duration-300 hover:scale-105 transform">
-                        <div className="flex items-center space-x-2 flex-shrink-0">
-                          <div 
-                            className="w-4 h-4 rounded-sm flex-shrink-0" 
-                            style={{ backgroundColor: layer.color }}
-                          ></div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-sm transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
-                            {layer.name}
-                          </div>
-                          <div className="text-xs mt-1 transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.8 }}>
-                            {getLayerDescription(layer.id)}
-                          </div>
-                        </div>
+              {isSimulationActive ? (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 text-sm">
+                    <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#22c55e' }}></div>
+                    <span>Free Taxi</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#ef4444' }}></div>
+                    <span>Busy Taxi</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#3b82f6' }}></div>
+                    <span>Pending Order</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#eab308' }}></div>
+                    <span>Pickup Location</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <div className="w-4 h-4 rounded-sm" style={{ backgroundColor: '#8b5cf6' }}></div>
+                    <span>Dropoff Location</span>
+                  </div>
+                  
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <h5 className="font-medium text-xs mb-2">Route Colors</h5>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2 text-xs">
+                        <div className="w-4 h-1 rounded" style={{ backgroundColor: '#3b82f6' }}></div>
+                        <span>📍 Proximity Routes</span>
                       </div>
-                    );
-                  })}
-              </div>
+                      <div className="flex items-center space-x-2 text-xs">
+                        <div className="w-4 h-1 rounded" style={{ backgroundColor: '#f59e0b' }}></div>
+                        <span>📊 Demand Routes</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-xs">
+                        <div className="w-4 h-1 rounded" style={{ backgroundColor: '#10b981' }}></div>
+                        <span>🔄 Hybrid Routes</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availableLayers
+                    .filter(layer => activeLayers.includes(layer.id))
+                    .map((layer) => {
+                      // Get layer-specific descriptions
+                      const getLayerDescription = (layerId: string) => {
+                        switch (layerId) {
+                          case 'routes':
+                            return 'Most frequently used transportation paths (heatmap)';
+                          case 'demand':
+                            return 'High-demand areas for transportation services';
+                          case 'availability':
+                            return 'Current driver availability across regions';
+                          case 'violations':
+                            return 'Speed limit violations (>60 km/h)';
+                          case 'anomalies':
+                            return 'Unusual trip patterns and anomalies';
+                          case 'traffic_jams':
+                            return 'Traffic congestion areas';
+                          case 'speed_zones':
+                            return 'Speed pattern visualization (heatmap)';
+                          default:
+                            return layer.description;
+                        }
+                      };
+
+                      return (
+                        <div key={layer.id} className="layer-legend-item flex items-start space-x-3 transition-all duration-300 hover:scale-105 transform">
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            <div 
+                              className="w-4 h-4 rounded-sm flex-shrink-0" 
+                              style={{ backgroundColor: layer.color }}
+                            ></div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-semibold text-sm transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
+                              {layer.name}
+                            </div>
+                            <div className="text-xs mt-1 transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.8 }}>
+                              {getLayerDescription(layer.id)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
               
-              {/* Data info */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="text-xs transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.6 }}>
-                  Total Records: {analysisData.metadata.total_records.toLocaleString()}
+              {/* Data info - show simulation info or analysis info */}
+              {!isSimulationActive && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="text-xs transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.6 }}>
+                    Total Records: {analysisData?.metadata.total_records.toLocaleString()}
+                  </div>
+                  <div className="text-xs transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.6 }}>
+                    Active Layers: {activeLayers.length} of {availableLayers.length}
+                  </div>
                 </div>
-                <div className="text-xs transition-colors duration-300 hover:opacity-90" style={{ color: '#141414', opacity: 0.6 }}>
-                  Active Layers: {activeLayers.length} of {availableLayers.length}
-                </div>
-              </div>
+              )}
             </div>
           )}
+          </>
 
           {/* Mobile Bottom Panel */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[1000]">
@@ -427,30 +631,31 @@ function SolutionMapContent() {
             <div className="p-4 border-b border-gray-200">
               <button
                 id="tour-taxi-simulation-mobile"
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
-                style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+                onClick={handleSimulationToggle}
+                className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
+                  isSimulationActive ? 'border-2 hover:bg-gray-50' : ''
+                }`}
+                style={{ 
+                  backgroundColor: isSimulationActive ? 'transparent' : '#C1F21D', 
+                  color: '#141414',
+                  borderColor: isSimulationActive ? '#141414' : undefined
+                }}
               >
-                🚕 Taxi Simulation
+                {isSimulationActive ? '🔙 Back to Analysis' : '🚕 Taxi Simulation'}
               </button>
             </div>
             
-            {/* Mobile Data Layers Toggle Button */}
-            <div className="p-4 border-b border-gray-200">
-              <button
-                id="mobile-layers-toggle"
-                onClick={() => {
-                  // Don't allow closing during tour layer steps  
-                  if (isTourOpen && currentStep >= 3 && currentStep <= 10) {
-                    return;
-                  }
-                  setIsMobileLayersOpen(!isMobileLayersOpen);
-                }}
-                className="tour-data-layers-target w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
-              >
+            {/* Mobile Simulation Controls - Show only during simulation */}
+            {isSimulationActive && (
+              <div className="p-4 border-b border-gray-200">
+                <button
+                  onClick={() => setIsMobileLayersOpen(!isMobileLayersOpen)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
+                >
                   <div className="flex items-center space-x-3">
-                    <span className="text-lg">📊</span>
+                    <span className="text-lg">⚙️</span>
                     <span className="font-medium" style={{ color: '#141414' }}>
-                      Data Layers ({activeLayers.length} active)
+                      Simulation Settings
                     </span>
                   </div>
                   <svg 
@@ -463,121 +668,217 @@ function SolutionMapContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-              </div>
 
-              {/* Mobile Data Layers Panel */}
-              {isMobileLayersOpen && (
-                <>
-                  {/* Overlay to close tooltip when clicking outside */}
-                  {mobileTooltipOpen && (
-                    <div 
-                      className="fixed inset-0 z-40" 
-                      onClick={() => setMobileTooltipOpen(null)}
-                    />
-                  )}
-                  <div className={`${isTourOpen && currentStep >= 3 && currentStep <= 10 ? 'max-h-screen' : 'max-h-80'} overflow-y-auto animate-in slide-in-from-bottom duration-300 relative z-50`}>
-                    <div className="p-4 space-y-3">
-
-                    {/* Quick Controls */}
-                    <div className="flex space-x-2 mb-4">
+                {/* Collapsible Simulation Settings Panel */}
+                {isMobileLayersOpen && (
+                  <div className="mt-4 space-y-4 animate-in slide-in-from-top duration-300">
+                    
+                    {/* Assignment Algorithm Section */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <h3 className="text-lg font-bold mb-4" style={{ color: '#141414' }}>Assignment Algorithm</h3>
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={useProximity}
+                            onChange={handleProximityChange}
+                            className="rounded"
+                          />
+                          <div>
+                            <span className="text-sm font-medium" style={{ color: '#141414' }}>📍 Proximity</span>
+                            <p className="text-xs text-gray-600 mt-1">Distance-based assignment</p>
+                          </div>
+                        </label>
+                        <label className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={useSupplyDemand}
+                            onChange={handleSupplyDemandChange}
+                            className="rounded"
+                          />
+                          <div>
+                            <span className="text-sm font-medium" style={{ color: '#141414' }}>📊 Supply-Demand Ratio</span>
+                            <p className="text-xs text-gray-600 mt-1">Considers demand density</p>
+                          </div>
+                        </label>
+                        <div
+                          className="px-3 py-2 rounded-lg text-sm font-medium text-center transition-all duration-300"
+                          style={{ backgroundColor: getAlgorithmColor(), color: 'white' }}
+                        >
+                          Active: {getAlgorithmName()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Demand Visualization Section */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200">
+                      <h3 className="text-lg font-bold mb-4" style={{ color: '#141414' }}>Demand Visualization</h3>
                       <button
-                        onClick={enableAllLayers}
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-[1.02]"
-                        style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+                        onClick={() => setShowDemandLayer(!showDemandLayer)}
+                        className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform ${
+                          showDemandLayer 
+                            ? 'border-2 hover:bg-gray-50' 
+                            : ''
+                        }`}
+                        style={{
+                          backgroundColor: showDemandLayer ? 'transparent' : '#C1F21D',
+                          color: '#141414',
+                          borderColor: showDemandLayer ? '#141414' : undefined
+                        }}
                       >
-                        Enable All
-                      </button>
-                      <button
-                        onClick={clearAllLayers}
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-all duration-300 hover:scale-[1.02] hover:bg-gray-50"
-                        style={{ borderColor: '#141414', color: '#141414' }}
-                      >
-                        Clear All
+                        {showDemandLayer ? 'Hide' : 'Show'} Demand ({demandHexagons.length})
                       </button>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-                    {/* Compact Layer List */}
-                    {availableLayers.map((layer) => (
-                      <button
-                        key={layer.id}
-                        id={`tour-layer-${layer.id}`}
-                        onClick={() => {
-                          toggleLayer(layer.id);
-                          setMobileTooltipOpen(null); // Close tooltip when toggling layer
-                        }}
-                        className={`w-full p-3 rounded-lg border-2 transition-all duration-300 text-left ${
-                          activeLayers.includes(layer.id) 
-                            ? 'border-opacity-100 shadow-sm' 
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        style={{ 
-                          borderColor: activeLayers.includes(layer.id) ? layer.color : undefined,
-                          backgroundColor: activeLayers.includes(layer.id) ? `${layer.color}15` : 'white'
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex flex-col items-center space-y-1">
-                              <span className="text-lg">{layer.icon}</span>
-                              {/* Mobile Info Icon with Click Tooltip */}
-                              <div className="relative">
-                                <svg 
-                                  className={`w-3 h-3 transition-colors duration-300 cursor-pointer ${
-                                    mobileTooltipOpen === layer.id ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'
-                                  }`}
-                                  fill="none" 
-                                  stroke="currentColor" 
-                                  viewBox="0 0 24 24"
-                                  onClick={(e) => toggleMobileTooltip(layer.id, e)}
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                {/* Mobile Tooltip - Show/Hide on Click */}
-                                {mobileTooltipOpen === layer.id && (
-                                  <div className="absolute bottom-5 left-0 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 z-50 w-72 animate-in fade-in duration-200">
-                                    <div className="text-left leading-relaxed">
-                                      {getLayerInfo(layer.id)}
+            {/* Mobile Data Layers Toggle Button - Hide during simulation */}
+            {!isSimulationActive && (
+              <div className="p-4 border-b border-gray-200">
+                <button
+                  id="mobile-layers-toggle"
+                  onClick={() => {
+                    // Don't allow closing during tour layer steps  
+                    if (isTourOpen && currentStep >= 3 && currentStep <= 10) {
+                      return;
+                    }
+                    setIsMobileLayersOpen(!isMobileLayersOpen);
+                  }}
+                  className="tour-data-layers-target w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
+                >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">📊</span>
+                      <span className="font-medium" style={{ color: '#141414' }}>
+                        Data Layers ({activeLayers.length} active)
+                      </span>
+                    </div>
+                    <svg 
+                      className={`w-5 h-5 transition-transform duration-300 ${isMobileLayersOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                      style={{ color: '#141414' }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                {/* Mobile Data Layers Panel */}
+                {isMobileLayersOpen && !isSimulationActive && (
+                  <>
+                    {/* Overlay to close tooltip when clicking outside */}
+                    {mobileTooltipOpen && (
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setMobileTooltipOpen(null)}
+                      />
+                    )}
+                    <div className={`${isTourOpen && currentStep >= 3 && currentStep <= 10 ? 'max-h-screen' : 'max-h-80'} overflow-y-auto animate-in slide-in-from-bottom duration-300 relative z-50`}>
+                      <div className="p-4 space-y-3">
+
+                      {/* Quick Controls */}
+                      <div className="flex space-x-2 mb-4">
+                        <button
+                          onClick={enableAllLayers}
+                          className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-[1.02]"
+                          style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+                        >
+                          Enable All
+                        </button>
+                        <button
+                          onClick={clearAllLayers}
+                          className="flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-all duration-300 hover:scale-[1.02] hover:bg-gray-50"
+                          style={{ borderColor: '#141414', color: '#141414' }}
+                        >
+                          Clear All
+                        </button>
+                      </div>
+
+                      {/* Compact Layer List */}
+                      {availableLayers.map((layer) => (
+                        <button
+                          key={layer.id}
+                          id={`tour-layer-${layer.id}`}
+                          onClick={() => {
+                            toggleLayer(layer.id);
+                            setMobileTooltipOpen(null); // Close tooltip when toggling layer
+                          }}
+                          className={`w-full p-3 rounded-lg border-2 transition-all duration-300 text-left ${
+                            activeLayers.includes(layer.id) 
+                              ? 'border-opacity-100 shadow-sm' 
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          style={{ 
+                            borderColor: activeLayers.includes(layer.id) ? layer.color : undefined,
+                            backgroundColor: activeLayers.includes(layer.id) ? `${layer.color}15` : 'white'
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex flex-col items-center space-y-1">
+                                <span className="text-lg">{layer.icon}</span>
+                                {/* Mobile Info Icon with Click Tooltip */}
+                                <div className="relative">
+                                  <svg 
+                                    className={`w-3 h-3 transition-colors duration-300 cursor-pointer ${
+                                      mobileTooltipOpen === layer.id ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'
+                                    }`}
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
+                                    onClick={(e) => toggleMobileTooltip(layer.id, e)}
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  {/* Mobile Tooltip - Show/Hide on Click */}
+                                  {mobileTooltipOpen === layer.id && (
+                                    <div className="absolute bottom-5 left-0 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 z-50 w-72 animate-in fade-in duration-200">
+                                      <div className="text-left leading-relaxed">
+                                        {getLayerInfo(layer.id)}
+                                      </div>
+                                      {/* Tooltip Arrow - positioned on the left side */}
+                                      <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                                     </div>
-                                    {/* Tooltip Arrow - positioned on the left side */}
-                                    <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold" style={{ color: '#141414' }}>
+                                  {layer.name}
+                                </h4>
+                                <p className="text-xs opacity-70" style={{ color: '#141414' }}>
+                                  {layer.description}
+                                </p>
                               </div>
                             </div>
-                            <div>
-                              <h4 className="text-sm font-semibold" style={{ color: '#141414' }}>
-                                {layer.name}
-                              </h4>
-                              <p className="text-xs opacity-70" style={{ color: '#141414' }}>
-                                {layer.description}
-                              </p>
+                            <div 
+                              className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
+                                activeLayers.includes(layer.id) 
+                                  ? 'bg-current border-current' 
+                                  : 'border-gray-300'
+                              }`}
+                              style={{ 
+                                color: activeLayers.includes(layer.id) ? layer.color : undefined 
+                              }}
+                            >
+                              {activeLayers.includes(layer.id) && (
+                                <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
                             </div>
                           </div>
-                          <div 
-                            className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
-                              activeLayers.includes(layer.id) 
-                                ? 'bg-current border-current' 
-                                : 'border-gray-300'
-                            }`}
-                            style={{ 
-                              color: activeLayers.includes(layer.id) ? layer.color : undefined 
-                            }}
-                          >
-                            {activeLayers.includes(layer.id) && (
-                              <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
+                        </button>
+                      ))}
+                    </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
