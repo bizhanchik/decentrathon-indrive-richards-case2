@@ -156,6 +156,13 @@ export interface MapContextActions {
   setActiveLayers: (layers: string[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  loadAnalysisData: () => Promise<void>;
+  clearData: () => void;
+  enableAllLayers: () => void;
+  clearAllLayers: () => void;
+  isLayerActive: (layerId: string) => boolean;
+  getLayerData: <T = any>(layerId: keyof AnalysisLayers) => T | null;
+  getActiveLayerCount: () => number;
 }
 
 export type MapContextValue = MapContextState & MapContextActions;

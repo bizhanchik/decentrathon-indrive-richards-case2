@@ -103,7 +103,7 @@ export function HeatmapLayer({ data, options = {}, isActive }: HeatmapLayerProps
         heatLayerRef.current = L.heatLayer(data, defaultOptions);
         
         // Add back if should be active
-        if (isActive) {
+        if (isActive && heatLayerRef.current) {
           map.addLayer(heatLayerRef.current);
         }
       } catch (error) {

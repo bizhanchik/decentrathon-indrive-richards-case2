@@ -156,7 +156,7 @@ export function useOptimizedLayerData<T = any>(layerId: keyof AnalysisLayers, op
   sampleSize?: number;
 }) {
   const { getLayerData, isLayerActive } = useMap();
-  const { enableCaching = true, sampleSize } = options || {};
+  const { sampleSize } = options || {};
 
   const layerData = useMemo(() => {
     const data = getLayerData<T>(layerId);

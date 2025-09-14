@@ -6,7 +6,7 @@ import type { SpeedViolation, AnomalyTrip, TrafficJam } from '../../types/mapTyp
 interface PointMarkersLayerProps<T> {
   data: T[];
   isActive: boolean;
-  createMarker: (item: T) => L.Marker | L.Circle;
+  createMarker: (item: T) => L.Marker | L.Circle | L.LayerGroup;
   onMarkerClick?: (item: T) => void;
 }
 

@@ -1,4 +1,4 @@
-import type { TaxiAnalysisData, AnalysisLayers } from '../types/mapTypes';
+import type { TaxiAnalysisData } from '../types/mapTypes';
 
 export class DataValidationError extends Error {
   constructor(message: string) {

@@ -81,11 +81,24 @@ function SolutionMapContent() {
   // Filter layers based on available data
   const availableLayers = dataLayers.filter(layer => {
     const layerData = analysisData?.layers[layer.id as keyof typeof analysisData.layers];
-    return layerData && (
-      (Array.isArray(layerData) && layerData.length > 0) ||
-      (layerData.points && layerData.points.length > 0) ||
-      (layerData.hexagons && layerData.hexagons.length > 0)
-    );
+    if (!layerData) return false;
+    
+    // Check if it's an array (for violations, anomalies, traffic_jams)
+    if (Array.isArray(layerData) && layerData.length > 0) {
+      return true;
+    }
+    
+    // Check if it has points property (for routes, speed_zones)
+    if ('points' in layerData && layerData.points && layerData.points.length > 0) {
+      return true;
+    }
+    
+    // Check if it has hexagons property (for demand, availability)
+    if ('hexagons' in layerData && layerData.hexagons && layerData.hexagons.length > 0) {
+      return true;
+    }
+    
+    return false;
   });
 
   return (
@@ -279,7 +292,7 @@ function SolutionMapContent() {
               <div className="space-y-2">
                 {availableLayers
                   .filter(layer => activeLayers.includes(layer.id))
-                  .map((layer, index) => {
+                  .map((layer) => {
                     // Get layer-specific descriptions
                     const getLayerDescription = (layerId: string) => {
                       switch (layerId) {

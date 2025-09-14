@@ -1,4 +1,3 @@
-import React from 'react';
 import { BaseMap } from './BaseMap';
 import { PopularRoutesLayer, SpeedZonesLayer } from './HeatmapLayer';
 import { DemandLayer, AvailabilityLayer } from './HexagonalGridLayer';

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import type { TaxiAnalysisData, MapContextValue, AnalysisLayers } from '../types/mapTypes';
 import { dataService, DataValidationError } from '../services/dataService';
 
@@ -188,16 +189,14 @@ export function MapProvider({ children }: MapProviderProps) {
     setLoading,
     setError,
     
-    // Helper methods (extending the interface)
-    ...{
-      loadAnalysisData,
-      clearData,
-      enableAllLayers,
-      clearAllLayers,
-      isLayerActive,
-      getLayerData,
-      getActiveLayerCount,
-    }
+    // Helper methods
+    loadAnalysisData,
+    clearData,
+    enableAllLayers,
+    clearAllLayers,
+    isLayerActive,
+    getLayerData,
+    getActiveLayerCount,
   };
 
   return (
