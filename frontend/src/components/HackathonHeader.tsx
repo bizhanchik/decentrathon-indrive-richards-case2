@@ -1,6 +1,8 @@
 import { Highlight } from './Highlight';
+import { StartTourButton } from './GuidedTour';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { resetTourStatus } from '../utils/cookies';
 
 export function HackathonHeader() {
   const navigate = useNavigate();
@@ -47,7 +49,7 @@ export function HackathonHeader() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-2">
+          <nav className="hidden md:flex space-x-2 items-center">
             <button 
               onClick={handleSolutionNavigation}
               className="px-4 py-2 text-sm font-medium transition-all duration-300 hover:scale-105 hover:bg-gray-50 rounded-lg transform hover:shadow-sm cursor-pointer" 
@@ -69,6 +71,26 @@ export function HackathonHeader() {
             >
               Team
             </button>
+            
+            {/* Tour Button - Only show on solution page */}
+            {location.pathname === '/solution' && (
+              <div className="ml-2 flex items-center space-x-2">
+                <StartTourButton variant="icon" size="sm" />
+                {/* Development Reset Button */}
+                {import.meta.env.DEV && (
+                  <button
+                    onClick={() => {
+                      resetTourStatus();
+                      window.location.reload();
+                    }}
+                    className="p-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all duration-200"
+                    title="Reset Tour (Dev Only)"
+                  >
+                    🔄
+                  </button>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* Desktop CTA */}
@@ -138,6 +160,27 @@ export function HackathonHeader() {
             >
               Team
             </button>
+            
+            {/* Tour Button - Only show on solution page */}
+            {location.pathname === '/solution' && (
+              <div className="px-3 py-2 flex flex-col space-y-2">
+                <StartTourButton variant="primary" size="md" className="w-full" />
+                {/* Development Reset Button */}
+                {import.meta.env.DEV && (
+                  <button
+                    onClick={() => {
+                      resetTourStatus();
+                      window.location.reload();
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-700 text-center py-1 transition-all duration-200"
+                    title="Reset Tour (Dev Only)"
+                  >
+                    🔄 Reset Tour (Dev)
+                  </button>
+                )}
+              </div>
+            )}
+            
             <a 
               href="https://decentrathon.ai/" 
               target="_blank" 

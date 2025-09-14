@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Highlight } from './Highlight';
 import { TaxiAnalysisMap } from './map/TaxiAnalysisMap';
 import { MapProvider, useMap, useLayerMetadata } from '../contexts/MapContext';
+import { useTourContext } from '../contexts/TourContext';
 
 interface DataLayer {
   id: string;
@@ -13,6 +14,7 @@ interface DataLayer {
 
 function SolutionMapContent() {
   const [isMobileLayersOpen, setIsMobileLayersOpen] = useState(false);
+  const [mobileTooltipOpen, setMobileTooltipOpen] = useState<string | null>(null);
   const { 
     activeLayers, 
     toggleLayer, 
@@ -24,6 +26,43 @@ function SolutionMapContent() {
   } = useMap();
   
   const layerMetadata = useLayerMetadata();
+  const { isTourOpen, currentStep } = useTourContext();
+
+  // Auto-open mobile layers panel when tour reaches the data layers step (step 3) and keep it open for layer steps
+  useEffect(() => {
+    if (isTourOpen && currentStep >= 3 && currentStep <= 10) {
+      // Steps 3-10 cover data layers explanation and all individual layer steps
+      setIsMobileLayersOpen(true);
+    }
+  }, [isTourOpen, currentStep]);
+
+  // Helper function to get detailed info for each layer
+  const getLayerInfo = (layerId: string): string => {
+    switch (layerId) {
+      case 'routes':
+        return 'Visualizes the most frequently used transportation paths as heat intensity. Higher intensity areas (brighter colors) indicate routes with more taxi traffic. Useful for understanding city traffic flow patterns and identifying main transportation corridors.';
+      case 'demand':
+        return 'Shows taxi demand density using hexagonal grid visualization. Red/hot areas indicate high taxi request frequency, while cooler colors show lower demand. Helps identify busy commercial areas, entertainment districts, and peak demand locations.';
+      case 'availability':
+        return 'Displays current driver distribution and availability across different city regions. Shows where drivers are concentrated and areas that might need better coverage. Essential for optimizing driver dispatch and reducing wait times.';
+      case 'violations':
+        return 'Highlights routes and areas where speed violations occur (speeds exceeding 60 km/h). Critical for identifying potentially dangerous driving patterns and areas requiring enhanced safety monitoring or speed limit enforcement.';
+      case 'anomalies':
+        return 'Detects and displays unusual trip patterns including abnormally long/short trips, unexpected routes, or irregular travel behavior. Helps identify operational issues, potential fraud, or system optimization opportunities.';
+      case 'traffic_jams':
+        return 'Identifies congestion hotspots where traffic flow is significantly reduced. Shows areas with frequent bottlenecks and slow-moving traffic. Essential for route optimization and helping drivers avoid congested areas.';
+      case 'speed_zones':
+        return 'Visualizes average speed patterns across the city as a heat map. Shows areas with consistently high speeds (highways, main roads) vs. low speeds (residential, congested areas). Useful for understanding traffic flow dynamics.';
+      default:
+        return 'This data layer provides specific insights into taxi operations and city transportation patterns.';
+    }
+  };
+
+  // Toggle mobile tooltip
+  const toggleMobileTooltip = (layerId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent layer toggle when clicking info icon
+    setMobileTooltipOpen(mobileTooltipOpen === layerId ? null : layerId);
+  };
   
   // Updated data layers with correct IDs matching the analysis data
   const dataLayers: DataLayer[] = [
@@ -109,15 +148,25 @@ function SolutionMapContent() {
           {/* Scrollable Data Layers Section - Limited Height */}
           <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <div className="p-6">
-              <h2 className="text-xl font-bold mb-6 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
+              {/* Taxi Simulation Button */}
+              <button
+                id="tour-taxi-simulation-desktop"
+                className="w-full px-4 py-3 mb-6 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg transform"
+                style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+              >
+                🚕 Taxi Simulation
+              </button>
+              
+              <h2 id="tour-data-layers" className="tour-data-layers-target text-xl font-bold mb-6 transition-transform duration-300 hover:scale-105" style={{ color: '#141414' }}>
                 Data Layers
               </h2>
               
-              <div className="space-y-4">
+              <div id="tour-layers-list" className="space-y-4">
                 {availableLayers.map((layer, index) => (
                   <div
                     key={layer.id}
-                    className={`p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] transform animate-in slide-in-from-left ${
+                    id={`tour-layer-${layer.id}`}
+                    className={`relative p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] transform animate-in slide-in-from-left ${
                       activeLayers.includes(layer.id) 
                         ? 'border-opacity-100 shadow-lg' 
                         : 'border-gray-200 hover:border-gray-300'
@@ -174,6 +223,30 @@ function SolutionMapContent() {
                         </div>
                       </div>
                     )}
+
+                    {/* Desktop Info Icon - Bottom Right Corner */}
+                    <div className={`absolute right-3 transition-all duration-300 ${
+                      activeLayers.includes(layer.id) ? 'bottom-16' : 'bottom-3'
+                    }`}>
+                      <div className="relative group">
+                        <svg 
+                          className="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors duration-300 cursor-help" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {/* Desktop Tooltip */}
+                        <div className="absolute bottom-6 right-0 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50 w-64">
+                          <div className="text-left leading-relaxed">
+                            {getLayerInfo(layer.id)}
+                          </div>
+                          {/* Tooltip Arrow */}
+                          <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -181,7 +254,7 @@ function SolutionMapContent() {
           </div>
 
           {/* Fixed Controls at Bottom - Guaranteed Space */}
-          <div className="border-t border-gray-200 p-4 bg-white animate-in slide-in-from-bottom duration-800 delay-1000 flex-shrink-0" style={{ minHeight: '140px' }}>
+          <div id="tour-layer-controls" className="border-t border-gray-200 p-4 bg-white animate-in slide-in-from-bottom duration-800 delay-1000 flex-shrink-0" style={{ minHeight: '140px' }}>
             <div className="space-y-3">
               <button
                 onClick={enableAllLayers}
@@ -202,7 +275,7 @@ function SolutionMapContent() {
         </div>
 
         {/* Map Area */}
-        <div className="flex-1 relative animate-in slide-in-from-right duration-800 delay-500">
+        <div id="tour-map-area" className="flex-1 relative animate-in slide-in-from-right duration-800 delay-500">
           <>
             {/* Loading State */}
             {isLoading && (
@@ -350,11 +423,29 @@ function SolutionMapContent() {
 
           {/* Mobile Bottom Panel */}
           <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[1000]">
+            {/* Mobile Taxi Simulation Button */}
+            <div className="p-4 border-b border-gray-200">
+              <button
+                id="tour-taxi-simulation-mobile"
+                className="w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                style={{ backgroundColor: '#C1F21D', color: '#141414' }}
+              >
+                🚕 Taxi Simulation
+              </button>
+            </div>
+            
             {/* Mobile Data Layers Toggle Button */}
             <div className="p-4 border-b border-gray-200">
               <button
-                onClick={() => setIsMobileLayersOpen(!isMobileLayersOpen)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
+                id="mobile-layers-toggle"
+                onClick={() => {
+                  // Don't allow closing during tour layer steps  
+                  if (isTourOpen && currentStep >= 3 && currentStep <= 10) {
+                    return;
+                  }
+                  setIsMobileLayersOpen(!isMobileLayersOpen);
+                }}
+                className="tour-data-layers-target w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
               >
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">📊</span>
@@ -376,8 +467,17 @@ function SolutionMapContent() {
 
               {/* Mobile Data Layers Panel */}
               {isMobileLayersOpen && (
-                <div className="max-h-80 overflow-y-auto animate-in slide-in-from-bottom duration-300">
-                  <div className="p-4 space-y-3">
+                <>
+                  {/* Overlay to close tooltip when clicking outside */}
+                  {mobileTooltipOpen && (
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setMobileTooltipOpen(null)}
+                    />
+                  )}
+                  <div className={`${isTourOpen && currentStep >= 3 && currentStep <= 10 ? 'max-h-screen' : 'max-h-80'} overflow-y-auto animate-in slide-in-from-bottom duration-300 relative z-50`}>
+                    <div className="p-4 space-y-3">
+
                     {/* Quick Controls */}
                     <div className="flex space-x-2 mb-4">
                       <button
@@ -400,7 +500,11 @@ function SolutionMapContent() {
                     {availableLayers.map((layer) => (
                       <button
                         key={layer.id}
-                        onClick={() => toggleLayer(layer.id)}
+                        id={`tour-layer-${layer.id}`}
+                        onClick={() => {
+                          toggleLayer(layer.id);
+                          setMobileTooltipOpen(null); // Close tooltip when toggling layer
+                        }}
                         className={`w-full p-3 rounded-lg border-2 transition-all duration-300 text-left ${
                           activeLayers.includes(layer.id) 
                             ? 'border-opacity-100 shadow-sm' 
@@ -413,7 +517,33 @@ function SolutionMapContent() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <span className="text-lg">{layer.icon}</span>
+                            <div className="flex flex-col items-center space-y-1">
+                              <span className="text-lg">{layer.icon}</span>
+                              {/* Mobile Info Icon with Click Tooltip */}
+                              <div className="relative">
+                                <svg 
+                                  className={`w-3 h-3 transition-colors duration-300 cursor-pointer ${
+                                    mobileTooltipOpen === layer.id ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'
+                                  }`}
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                  onClick={(e) => toggleMobileTooltip(layer.id, e)}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {/* Mobile Tooltip - Show/Hide on Click */}
+                                {mobileTooltipOpen === layer.id && (
+                                  <div className="absolute bottom-5 left-0 bg-gray-900 text-white text-xs rounded-lg py-2 px-3 z-50 w-72 animate-in fade-in duration-200">
+                                    <div className="text-left leading-relaxed">
+                                      {getLayerInfo(layer.id)}
+                                    </div>
+                                    {/* Tooltip Arrow - positioned on the left side */}
+                                    <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                             <div>
                               <h4 className="text-sm font-semibold" style={{ color: '#141414' }}>
                                 {layer.name}
@@ -443,7 +573,8 @@ function SolutionMapContent() {
                       </button>
                     ))}
                   </div>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           </>
