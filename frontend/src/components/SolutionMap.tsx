@@ -263,7 +263,7 @@ function SolutionMapContent() {
 
           {/* Active Layers Overlay */}
           {activeLayers.length > 0 && analysisData && (
-            <div className="active-layers-overlay absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-top duration-500 delay-1000 hidden lg:block" style={{ zIndex: 1000 }}>
+            <div className="active-layers-overlay absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-top duration-500 delay-1000 hidden lg:block z-10">
                 <h4 className="font-semibold mb-2 transition-colors duration-300 hover:opacity-80" style={{ color: '#141414' }}>
                   Active Data Layers
                 </h4>
@@ -349,7 +349,7 @@ function SolutionMapContent() {
           )}
 
           {/* Mobile Bottom Panel */}
-          <div className="lg:hidden absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[1000]">
             {/* Mobile Data Layers Toggle Button */}
             <div className="p-4 border-b border-gray-200">
               <button
