@@ -34,13 +34,20 @@ A modern React application built with Vite and TypeScript.
 npm install
 ```
 
-2. Start the development server:
+2. Configure environment variables:
+
+```bash
+cp .env.example .env
+# Edit .env file with your backend URLs
+```
+
+3. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Open your browser and visit [http://localhost:5173](http://localhost:5173)
+4. Open your browser and visit [http://localhost:5173](http://localhost:5173)
 
 ## 📝 Available Scripts
 
@@ -74,6 +81,26 @@ This project uses modern development tools and practices:
 - **ESLint**: Maintains code quality and consistency
 - **Prettier**: Ensures consistent code formatting
 - **Hot Reload**: Changes are reflected instantly during development
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+```bash
+# Backend WebSocket URL for taxi simulation
+VITE_WS_URL=ws://localhost:8000/ws
+
+# Backend API URL (if needed in the future)
+VITE_API_URL=http://localhost:8000
+```
+
+For production deployment:
+```bash
+VITE_WS_URL=wss://your-backend-domain.com/ws
+VITE_API_URL=https://your-backend-domain.com
+```
 
 ## 📋 Code Standards
 

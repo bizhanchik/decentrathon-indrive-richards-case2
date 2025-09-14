@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 const ASTANA_CENTER: [number, number] = [51.111339, 71.415581];
-const WS_URL = 'ws://localhost:8000/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws';
 
 // Animation configuration
 const TAXI_ANIMATION_SPEED = 200; // milliseconds between animation steps (higher = slower)
