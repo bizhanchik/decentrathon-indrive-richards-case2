@@ -1,0 +1,30 @@
+services:
+  # Backend API service
+  taxi-backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: taxi-simulation-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MAX_TAXIS=10
+      - MAX_PENDING_ORDERS=50
+      - H3_RESOLUTION=7
+      - USE_ROUTES_PLANNER=true
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    networks:
+      - taxi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  taxi-network:
+    driver: bridge

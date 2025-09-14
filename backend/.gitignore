@@ -42,11 +42,6 @@ logs/
 .env.test.local
 .env.production.local
 
-# Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
-docker-compose.override.yml
 
 # Testing
 .coverage
